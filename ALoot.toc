@@ -30,3 +30,4 @@ Database.lua
 Wishlist.lua
 Tooltip.lua
 UI\Main.lua
+API.lua
