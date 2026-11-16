@@ -1,0 +1,32 @@
+## Interface: 16001
+## Title: ALoot
+## Notes: Loot browser for dungeons, raids, crafting, factions, PvP and collections
+## Version: 0.1.0
+## Category: Loot
+## IconTexture: Interface\Icons\INV_Misc_Bag_10_Blue
+## AddonCompartmentFunc: ALoot_OnCompartmentClick
+## Dependencies: ACore
+## SavedVariables: ALootDB
+## SavedVariablesPerCharacter: ALootCharDB
+
+Core.lua
+
+Data\Loot_DungeonsAndRaids.lua
+Data\Loot_Crafting.lua
+Data\Loot_Factions.lua
+Data\Loot_PvP.lua
+Data\Loot_Collections.lua
+Data\Droprates.lua
+Data\Professions.lua
+Data\Recipes.lua
+Data\Sets.lua
+Data\SetNames.lua
+Data\Tokens.lua
+Data\Names.lua
+Data\SpellNames.lua
+
+Items.lua
+Database.lua
+Wishlist.lua
+Tooltip.lua
+UI\Main.lua

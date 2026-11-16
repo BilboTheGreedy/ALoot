@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="ALOOT_TOGGLE" header="ALOOT" category="ADDONS">
+		ALoot_ToggleBinding()
+	</Binding>
+</Bindings>
