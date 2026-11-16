@@ -15,7 +15,7 @@ local charDefaults = {
 	list = 1,
 }
 
-ACore.New(ADDON, ns, { db = "ALootDB", defaults = defaults, char = "ALootCharDB", charDefaults = charDefaults })
+ACore.New(ADDON, ns, { db = "ALootDB", defaults = defaults, profile = true, shared = { "lists" }, char = "ALootCharDB", charDefaults = charDefaults })
 
 ns:Listen("READY", function()
 	if #ns.db.lists == 0 then
