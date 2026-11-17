@@ -8,6 +8,7 @@ local defaults = {
 	alerts = true,
 	autoselect = true,
 	classFilter = "ALL",
+	needed = false,
 	lists = { { name = "Wishlist", items = {} } },
 }
 
@@ -23,8 +24,37 @@ ns:Listen("READY", function()
 	end
 end)
 
+function ns.Options()
+	local db = ns.db
+	local UI = ns.UI
+	local function changed() ns:Fire("OPTIONS") end
+	local entries = {
+		{ text = "Options", title = true },
+		UI.Check(db, "tooltip", "Show where items come from in tooltips"),
+		UI.Check(db, "alerts", "Announce wishlist items when they drop"),
+		UI.Check(db, "autoselect", "Open on the instance I am in"),
+		UI.Check(db, "needed", "Only show what I can use and do not own", changed),
+		{
+			text = "Minimap button", checked = ACore.MinimapShown(),
+			func = function() ACore.SetMinimap(not ACore.MinimapShown()) end,
+		},
+		{ text = "Window size", title = true },
+	}
+	for _, s in ipairs({ 0.8, 0.9, 1, 1.1, 1.2, 1.35 }) do
+		entries[#entries + 1] = {
+			text = math.floor(s * 100 + 0.5) .. "%", checked = math.abs((db.scale or 1) - s) < 0.01,
+			func = function()
+				db.scale = s
+				changed()
+			end,
+		}
+	end
+	return entries
+end
+
 ACore.Register({
 	name = "ALoot",
+	options = function() return ns.Options() end,
 	title = "ALoot",
 	slash = "/aloot",
 	desc = "loot browser",

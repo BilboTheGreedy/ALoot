@@ -123,7 +123,6 @@ function Wish.Rows(filter)
 		else
 			b = bucket("~", "Other")
 		end
-		local info = ns.Item(id)
 		if ns.Passes({ kind = "item", id = id }, filter) then
 			b.rows[#b.rows + 1] = { kind = "item", id = id, showSource = true }
 		end
@@ -148,12 +147,12 @@ end
 
 ns:On("CHAT_MSG_LOOT", function(msg)
 	if not ns.db or not ns.db.alerts then return end
-	if type(msg) ~= "string" or ns.IsSecret(msg) then return end
+	if ns.IsSecret(msg) or type(msg) ~= "string" then return end
 	local id = tonumber(msg:match("|Hitem:(%d+)"))
 	if not id then return end
 	local listName = Wish.OnAny(id)
 	if not listName then return end
-	local link = msg:match("(|c%x+|Hitem:.-|h%[.-%]|h|r)") or ns.ItemLink(id) or ("item " .. id)
+	local link = msg:match("(|c[^|]+|Hitem:.-|h%[.-%]|h|r)") or ns.ItemLink(id) or ("item " .. id)
 	ns.Print("wishlist item looted: " .. link .. " (" .. listName .. ")")
 	if PlaySound and SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST then
 		pcall(PlaySound, SOUNDKIT.UI_EPICLOOT_TOAST)

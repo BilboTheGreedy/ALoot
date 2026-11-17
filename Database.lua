@@ -288,6 +288,11 @@ end
 local function passes(row, filter)
 	if row.kind ~= "item" or not filter then return true end
 	local class, slot, armor = filter.class, filter.slot, filter.armor
+	if filter.needed then
+		if ns.Owned(row.id) then return false end
+		local kind = ns.ItemKind(row.id)
+		if kind and not ns.Usable(kind, ns.playerClass) then return false end
+	end
 	if (not class or class == "ALL") and (not slot or slot == "ALL") and (not armor or armor == "ALL") then return true end
 	local info = ns.ItemKind(row.id)
 	if not ns.SlotMatches(info, slot) then return false end

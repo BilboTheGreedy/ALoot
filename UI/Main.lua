@@ -23,7 +23,7 @@ local state = {
 local function filter()
 	local class = ns.db.classFilter
 	if class == "MINE" then class = ns.playerClass end
-	return { class = class, slot = state.slot, armor = state.armor }
+	return { class = class, slot = state.slot, armor = state.armor, needed = ns.db.needed }
 end
 
 local function currentGroup()
@@ -38,7 +38,8 @@ local function insertLink(link)
 	if ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
 end
 
-local function preview(link)
+local function preview(link, id)
+	link = link or (id and ("item:" .. id))
 	if not link then return end
 	if DressUpItemLink then
 		DressUpItemLink(link)
@@ -52,6 +53,19 @@ local function pushDetail(title, build)
 	UI.RefreshContent()
 end
 
+local function hideCompare()
+	if ShoppingTooltip1 and ShoppingTooltip1.Hide then ShoppingTooltip1:Hide() end
+	if ShoppingTooltip2 and ShoppingTooltip2.Hide then ShoppingTooltip2:Hide() end
+end
+
+local function compare()
+	if IsShiftKeyDown and IsShiftKeyDown() and GameTooltip_ShowCompareItem then
+		pcall(GameTooltip_ShowCompareItem, GameTooltip)
+	else
+		hideCompare()
+	end
+end
+
 local function showTooltip(row)
 	local d = row.data
 	if not d then return end
@@ -62,6 +76,7 @@ local function showTooltip(row)
 		else
 			GameTooltip:SetHyperlink("item:" .. d.id)
 		end
+		compare()
 	elseif d.kind == "spell" then
 		local info = ns.CraftInfo(d.id)
 		if info and info.item then
@@ -119,7 +134,7 @@ local function clickRow(row, button)
 		if IsShiftKeyDown() then
 			insertLink(ns.ItemLink(d.id))
 		elseif IsControlKeyDown() then
-			preview(ns.ItemLink(d.id))
+			preview(ns.ItemLink(d.id), d.id)
 		elseif IsAltKeyDown() then
 			Wish.Toggle(d.id)
 		elseif button == "RightButton" then
@@ -138,7 +153,7 @@ local function clickRow(row, button)
 		if IsShiftKeyDown() and info and info.item then
 			insertLink(ns.ItemLink(info.item))
 		elseif IsControlKeyDown() and info and info.item then
-			preview(ns.ItemLink(info.item))
+			preview(ns.ItemLink(info.item), info.item)
 		elseif IsAltKeyDown() and info and info.item then
 			Wish.Toggle(info.item)
 		else
@@ -212,6 +227,7 @@ local function createLootRow(list)
 	end)
 	row:SetScript("OnLeave", function(self)
 		if list.hovered == self then list.hovered = nil end
+		hideCompare()
 		GameTooltip:Hide()
 	end)
 	return row
@@ -594,37 +610,7 @@ local function armorMenu(anchor)
 end
 
 local function optionsMenu(anchor)
-	local db = ns.db
-	local function toggle(text, key, after)
-		return {
-			text = text, checked = db[key],
-			func = function()
-				db[key] = not db[key]
-				if after then after() end
-			end,
-		}
-	end
-	local entries = {
-		{ text = "Options", title = true },
-		toggle("Show where items come from in tooltips", "tooltip"),
-		toggle("Announce wishlist items when they drop", "alerts"),
-		toggle("Open on the instance I am in", "autoselect"),
-		{
-			text = "Minimap button", checked = ACore.MinimapShown(),
-			func = function() ACore.SetMinimap(not ACore.MinimapShown()) end,
-		},
-		{ text = "Window size", title = true },
-	}
-	for _, s in ipairs({ 0.8, 0.9, 1, 1.1, 1.2, 1.35 }) do
-		entries[#entries + 1] = {
-			text = math.floor(s * 100 + 0.5) .. "%", checked = math.abs(db.scale - s) < 0.01,
-			func = function()
-				db.scale = s
-				frame:SetScale(s)
-			end,
-		}
-	end
-	UI.Menu(anchor, entries)
+	UI.Menu(anchor, ns.Options())
 end
 
 local function wishMenu(anchor)
@@ -652,8 +638,6 @@ local function build()
 	frame = CreateFrame("Frame", "ALootFrame", UIParent)
 	frame:SetSize(1000, 640)
 	frame:SetFrameStrata("HIGH")
-	frame:SetClampedToScreen(true)
-	frame:SetMovable(true)
 	frame:EnableMouse(true)
 	frame:Hide()
 	UI.Fill(frame, C.bg)
@@ -667,12 +651,8 @@ local function build()
 	UI.Fill(bar, C.bar)
 	bar:EnableMouse(true)
 	bar:RegisterForDrag("LeftButton")
-	bar:SetScript("OnDragStart", function() frame:StartMoving() end)
-	bar:SetScript("OnDragStop", function()
-		frame:StopMovingOrSizing()
-		local point, _, rel, x, y = frame:GetPoint(1)
-		ns.db.pos = { point, rel, x, y }
-	end)
+	bar:SetScript("OnDragStart", function() frame:StartDrag() end)
+	bar:SetScript("OnDragStop", function() frame:StopDrag() end)
 
 	local title = UI.Text(bar, "GameFontNormalLarge", "LEFT", C.accent)
 	title:SetPoint("LEFT", 14, 0)
@@ -814,8 +794,14 @@ local function build()
 	local classButton = UI.Button(tools, "All classes", function(self) classMenu(self) end)
 	classButton:SetPoint("RIGHT", armorButton, "LEFT", -6, 0)
 	frame.classButton = classButton
+	local neededButton = UI.Button(tools, "Needed", function()
+		ns.db.needed = not ns.db.needed
+		UI.RefreshContent()
+	end)
+	neededButton:SetPoint("RIGHT", classButton, "LEFT", -6, 0)
+	frame.neededButton = neededButton
 	local listButton = UI.Button(tools, "Lists", function(self) wishMenu(self) end)
-	listButton:SetPoint("RIGHT", classButton, "LEFT", -6, 0)
+	listButton:SetPoint("RIGHT", neededButton, "LEFT", -6, 0)
 	frame.listButton = listButton
 
 	frame.diffButtons = {}
@@ -840,22 +826,16 @@ local function build()
 	UI.Fill(foot, C.bar)
 	local hint = UI.Text(foot, "GameFontDisableSmall", "LEFT", C.dim)
 	hint:SetPoint("LEFT", 10, 0)
-	hint:SetText("Click: details    Shift-click: link    Ctrl-click: try on    Alt-click or star: wishlist    Right-click: sources")
+	hint:SetText("Click: details    Shift: compare, click to link    Ctrl-click: try on    Alt-click or star: wishlist    Right-click: sources")
 	local count = UI.Text(foot, "GameFontDisableSmall", "RIGHT", C.dim)
 	count:SetPoint("RIGHT", -10, 0)
 	frame.count = count
 
-	frame:SetScale(ns.db.scale or 1)
-	local pos = ns.db.pos
-	frame:ClearAllPoints()
-	if pos and pos[1] then
-		frame:SetPoint(pos[1], UIParent, pos[2] or pos[1], pos[3] or 0, pos[4] or 0)
-	else
-		frame:SetPoint("CENTER")
-	end
+	UI.Movable(frame, ns.db, nil, true)
 
 	frame:SetScript("OnHide", function()
 		UI.CloseMenu()
+		hideCompare()
 		GameTooltip:Hide()
 	end)
 end
@@ -940,7 +920,7 @@ function UI.RefreshContent(keep)
 	end
 	frame.listButton:SetShown(state.view == "wishlist" and not top)
 
-	local anchor = frame.listButton:IsShown() and frame.listButton or frame.classButton
+	local anchor = frame.listButton:IsShown() and frame.listButton or frame.neededButton
 	local shown = 0
 	for i, b in ipairs(frame.diffButtons) do
 		local d = showDiffs and not top and g.diffs[#g.diffs - i + 1]
@@ -960,6 +940,7 @@ function UI.RefreshContent(keep)
 	frame.viewTitle:SetPoint("RIGHT", anchor, "LEFT", -8, 0)
 	frame.viewTitle:SetText(titleText or "")
 
+	frame.neededButton:SetActive(ns.db.needed)
 	frame.classButton:SetLabel(classLabel())
 	frame.classButton:SetActive(ns.db.classFilter ~= "ALL")
 	frame.slotButton:SetLabel(slotLabel())
@@ -1087,10 +1068,19 @@ ns:Listen("WISHLIST_CHANGED", function()
 end)
 
 ns:Listen("LAYOUT_RESET", function()
+	if frame then frame:Restore() end
+end)
+
+ns:Listen("OPTIONS", function()
 	if not frame then return end
-	frame:SetScale(1)
-	frame:ClearAllPoints()
-	frame:SetPoint("CENTER")
+	frame:SetScale(ns.db.scale or 1)
+	if frame:IsShown() then UI.RefreshContent(true) end
+end)
+
+ns:On("MODIFIER_STATE_CHANGED", function()
+	if not frame or not frame:IsShown() then return end
+	local row = frame.lootList.hovered
+	if row and row.data and row.data.kind == "item" and GameTooltip:IsShown() then compare() end
 end)
 
 ns:On("BAG_UPDATE_DELAYED", function()
